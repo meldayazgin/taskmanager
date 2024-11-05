@@ -2,15 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { auth } from '../firebase-config'; 
 import { signOut, deleteUser } from 'firebase/auth'; 
 import { db } from '../firebase-config'; 
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore'; 
 import './Logout.css'; 
 import { Link } from 'react-router-dom'; 
-
 
 const Logout = () => {
     const [user, setUser] = useState(null);
     const [userName, setUserName] = useState(''); 
     const [message, setMessage] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    const [newName, setNewName] = useState('');
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -20,7 +21,8 @@ const Logout = () => {
                 const userDoc = await getDoc(userDocRef);
                 if (userDoc.exists()) {
                     setUserName(userDoc.data().name || user.email);
-                }} else {
+                }
+            } else {
                 setUser(null); 
                 setUserName(''); 
             }
@@ -58,19 +60,56 @@ const Logout = () => {
         }
     };
 
+    const updateUserInfo = async () => {
+        if (newName.trim()) {
+            try {
+                const userDocRef = doc(db, 'users', user.email);
+                await updateDoc(userDocRef, { name: newName });
+                setUserName(newName);
+                setMessage('Name updated successfully.');
+                setNewName(''); 
+                setIsEditing(false); 
+            } catch (error) {
+                console.error('Error updating name: ', error);
+                setMessage('Failed to update name. Please try again.');
+            }
+        }
+    };
+
     return (
         <div className="logout-container">
             {user ? (
                 <>
                     <h2>Hello, {userName}!</h2> 
-                    {message && <p className="message">{message}</p>}
-                    <p>Do you want to log out or delete your account?</p>
                     <button className="logout-button" onClick={handleLogout}>
                         Logout
                     </button>
                     <button className="logout-button" onClick={handleDeleteAccount}>
                         Delete Account
                     </button>
+                    <button className="logout-button" onClick={() => setIsEditing(true)}>
+                        Update Name
+                    </button>
+                    {isEditing && (
+                    <div className="enter-new-name">
+                        <input 
+                            type="text" 
+                            placeholder="Enter new name" 
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)} 
+                            className="new-name-input" 
+                        />
+                        <div className="button-group">
+                            <button className="edit-name-button" onClick={updateUserInfo}>
+                                Save New Name
+                            </button>
+                            <button className="edit-name-button" onClick={() => setIsEditing(false)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                 )  }
+
                 </>
             ) : (
                 <>
